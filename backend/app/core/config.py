@@ -1,10 +1,13 @@
 """Application settings loaded from environment / .env file."""
 from functools import lru_cache
+import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent  # backend/
+IS_VERCEL = os.getenv("VERCEL") == "1"
+RUNTIME_DIR = Path("/tmp/bis-assist") if IS_VERCEL else BASE_DIR
 
 
 class Settings(BaseSettings):
@@ -25,10 +28,10 @@ class Settings(BaseSettings):
     jwt_secret: str = "dev-secret-change-me-in-production"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 480
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,https://localhost:5173,https://127.0.0.1:5173"
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,https://localhost:5173,https://127.0.0.1:5173,https://frontend-seven-sepia-41.vercel.app"
 
     # Database
-    database_url: str = f"sqlite:///{(BASE_DIR / 'bis_assistant.db').as_posix()}"
+    database_url: str = f"sqlite:///{(RUNTIME_DIR / 'bis_assistant.db').as_posix()}"
 
     # Google AI
     gemini_api_key: str = ""
@@ -46,7 +49,7 @@ class Settings(BaseSettings):
     # Paths
     data_dir: Path = BASE_DIR / "data"
     documents_dir: Path = BASE_DIR / "data" / "bis_documents"
-    uploads_dir: Path = BASE_DIR / "uploads"
+    uploads_dir: Path = RUNTIME_DIR / "uploads"
 
     @property
     def cors_origin_list(self) -> list[str]:
