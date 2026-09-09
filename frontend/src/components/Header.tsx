@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Bot, CheckCircle2, LogIn, Menu, ShieldCheck } from "lucide-react";
+import { Bot, CheckCircle2, LogIn, Menu, Moon, Palette, Sun } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useUserMode } from "@/context/UserModeContext";
@@ -14,7 +14,7 @@ const LANGS: { code: Language; label: string }[] = [
 
 export function Header() {
   const { user, isAuthenticated } = useAuth();
-  const { language, setLanguage, setOpen, isOpen } = useUserMode();
+  const { language, setLanguage, setOpen, isOpen, theme, setTheme } = useUserMode();
 
   const languageControls = (
     <div className="flex overflow-hidden rounded-lg border bg-muted/50">
@@ -64,6 +64,12 @@ export function Header() {
 
         <div className="hidden md:flex">{languageControls}</div>
 
+        <div className="hidden items-center gap-1 rounded-lg border bg-muted/50 p-1 sm:flex" aria-label="Appearance">
+          <button type="button" title="Light mode" aria-label="Light mode" aria-pressed={theme === "light"} onClick={() => setTheme("light")} className={cn("rounded-md p-1.5", theme === "light" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}><Sun className="h-3.5 w-3.5" /></button>
+          <button type="button" title="Orange mode" aria-label="Orange mode" aria-pressed={theme === "orange"} onClick={() => setTheme("orange")} className={cn("rounded-md p-1.5", theme === "orange" ? "bg-card text-orange-700 shadow-sm" : "text-muted-foreground hover:text-foreground")}><Palette className="h-3.5 w-3.5" /></button>
+          <button type="button" title="Dark mode" aria-label="Dark mode" aria-pressed={theme === "dark"} onClick={() => setTheme("dark")} className={cn("rounded-md p-1.5", theme === "dark" ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}><Moon className="h-3.5 w-3.5" /></button>
+        </div>
+
         {isAuthenticated && user ? (
           <Link
             to="/applications"
@@ -85,7 +91,14 @@ export function Header() {
         )}
       </div>
       <div className="flex h-2 items-center px-4 sm:px-6">
-        <div className="flex gap-3 md:hidden">{languageControls}</div>
+        <div className="flex items-center gap-3 md:hidden">
+          {languageControls}
+          <div className="flex items-center gap-1 rounded-lg border bg-muted/50 p-1" aria-label="Appearance">
+            <button type="button" title="Light mode" aria-label="Light mode" onClick={() => setTheme("light")} className={cn("rounded-md p-1", theme === "light" ? "bg-card text-primary" : "text-muted-foreground")}><Sun className="h-3 w-3" /></button>
+            <button type="button" title="Orange mode" aria-label="Orange mode" onClick={() => setTheme("orange")} className={cn("rounded-md p-1", theme === "orange" ? "bg-card text-orange-700" : "text-muted-foreground")}><Palette className="h-3 w-3" /></button>
+            <button type="button" title="Dark mode" aria-label="Dark mode" onClick={() => setTheme("dark")} className={cn("rounded-md p-1", theme === "dark" ? "bg-card text-primary" : "text-muted-foreground")}><Moon className="h-3 w-3" /></button>
+          </div>
+        </div>
       </div>
       <div className="hidden items-center justify-center gap-2 border-t bg-success/[0.04] px-4 py-1.5 text-[10px] font-medium text-success sm:flex">
         <CheckCircle2 className="h-3 w-3" aria-hidden="true" />

@@ -16,6 +16,8 @@ export interface ActivityItem {
   ts: string;
 }
 
+export type ThemeMode = "light" | "orange" | "dark";
+
 interface UserModeState {
   language: Language;
   setLanguage: (lang: Language) => void;
@@ -24,12 +26,15 @@ interface UserModeState {
   clearActivity: () => void;
   isOpen: boolean;
   setOpen: (open: boolean) => void;
+  theme: ThemeMode;
+  setTheme: (theme: ThemeMode) => void;
 }
 
 const UserModeContext = createContext<UserModeState | null>(null);
 
 const ACTIVITY_KEY = "bis_recent_activity";
 const LANG_KEY = "bis_language";
+const THEME_KEY = "bis_theme";
 
 function loadRecent(): ActivityItem[] {
   try {
@@ -48,10 +53,20 @@ export function UserModeProvider({ children }: { children: ReactNode }) {
   });
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>(loadRecent);
   const [isOpen, setIsOpen] = useState(false);
+  const [theme, setThemeState] = useState<ThemeMode>(() => {
+    const stored = localStorage.getItem(THEME_KEY);
+    return stored === "orange" || stored === "dark" ? stored : "light";
+  });
 
   const setLanguage = useCallback((lang: Language) => {
     localStorage.setItem(LANG_KEY, lang);
     setLanguageState(lang);
+  }, []);
+
+  const setTheme = useCallback((nextTheme: ThemeMode) => {
+    localStorage.setItem(THEME_KEY, nextTheme);
+    document.documentElement.dataset.theme = nextTheme;
+    setThemeState(nextTheme);
   }, []);
 
   const addActivity = useCallback((item: Omit<ActivityItem, "id" | "ts">) => {
@@ -80,6 +95,8 @@ export function UserModeProvider({ children }: { children: ReactNode }) {
         clearActivity,
         isOpen,
         setOpen: setIsOpen,
+        theme,
+        setTheme,
       }}
     >
       {children}

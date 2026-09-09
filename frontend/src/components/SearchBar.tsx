@@ -29,8 +29,8 @@ export function SearchBar() {
   }, [query, language, navigate]);
 
   return (
-    <div className="flex flex-wrap gap-2">
-      <div className="relative min-w-0 flex-1">
+    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
+      <div className="relative min-w-0 w-full flex-1 sm:w-auto">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={query}
@@ -41,16 +41,16 @@ export function SearchBar() {
           aria-label="Ask the BIS AI assistant"
         />
       </div>
-      <Button onClick={ask} size="lg" className="h-10 px-5">
+      <Button onClick={ask} size="lg" className="h-10 w-full px-5 sm:w-auto">
         <ArrowRight className="h-4 w-4" />
         Ask AI
       </Button>
 
-      <div className="mt-1 flex flex-wrap gap-1.5">
+      <div className="mt-1 flex min-w-0 w-full flex-wrap gap-1.5">
         {SUGGESTIONS.slice(0, 3).map((s) => (
           <button
             key={s}
-            className="rounded-full border border-white/25 bg-white/10 px-2.5 py-0.5 text-[10px] text-white/90 transition-colors hover:bg-white/20"
+            className="max-w-full truncate rounded-full border border-white/25 bg-white/10 px-2.5 py-0.5 text-[10px] text-white/90 transition-colors hover:bg-white/20"
             onClick={() => {
               setQuery(s);
               navigate(`/chat?q=${encodeURIComponent(s)}&lang=${language}`);

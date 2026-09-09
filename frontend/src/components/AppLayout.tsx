@@ -12,7 +12,7 @@ export function AppLayout() {
   const location = useLocation();
 
   return (
-    <div className="flex min-h-screen w-full bg-background">
+    <div className="flex min-h-screen w-full overflow-x-hidden bg-background">
       {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 border-r bg-card lg:flex">
         <Sidebar />
@@ -51,7 +51,7 @@ export function AppLayout() {
 
       <div className="flex min-h-screen flex-1 flex-col">
         <Header />
-        <main className="mx-auto w-full max-w-[1180px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        <main className="mx-auto w-full max-w-[1180px] min-w-0 flex-1 px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

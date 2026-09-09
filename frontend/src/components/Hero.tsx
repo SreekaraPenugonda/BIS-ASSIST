@@ -13,7 +13,7 @@ const STATS = [
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-sky-200 bg-gradient-to-br from-[#eaf7ff] via-white to-[#fff7e8] p-6 text-foreground card-shadow-lg sm:p-10">
+    <section className="home-hero relative min-w-0 overflow-hidden rounded-2xl border border-sky-200 bg-gradient-to-br from-[#eaf7ff] via-white to-[#fff7e8] p-4 text-foreground card-shadow-lg sm:p-10">
       <div className="hero-grid absolute inset-0" aria-hidden />
       <div className="absolute -right-24 -top-16 h-[480px] w-[520px] rounded-full bg-sky-200/35 blur-3xl" aria-hidden />
       <div className="absolute -bottom-20 -left-16 h-[360px] w-[380px] rounded-full bg-orange-100/60 blur-3xl" aria-hidden />
@@ -30,13 +30,13 @@ export function Hero() {
             भारत सरकार · GOVERNMENT OF INDIA
           </span>
 
-          <h1 className="mt-4 text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl">
+          <h1 className="mt-4 text-[clamp(2rem,10vw,3rem)] font-extrabold leading-[1.05] tracking-tight">
             <span className="text-primary">YOUR SAFETY,</span>
             <br />
             <span className="text-primary">OUR PRIORITY.</span>
           </h1>
 
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-600 sm:text-base">
+          <p className="hero-description mt-3 max-w-xl text-sm leading-relaxed text-slate-600 sm:text-base">
             Ask anything about Indian Standards, scan a product label for BIS
             compliance clues, or get certification guidance for your MSME — powered
             by RAG + Gemini, in English, हिंदी and తెలుగు.
