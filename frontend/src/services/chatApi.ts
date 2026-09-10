@@ -78,11 +78,18 @@ export async function streamChat(
           } else if (event.type === "done") {
             if (event.meta) options.onMeta?.(event.meta);
             options.onDone?.();
+              } else if (event.type === "close") {
+                options.onDone?.();
           }
         }
         boundary = buffer.indexOf("\n\n");
       }
     }
+        if (buffer.trim().startsWith("data: ")) {
+          const event: StreamEvent = JSON.parse(buffer.trim().slice(6).trim());
+          if (event.type === "meta" && event.meta) options.onMeta?.(event.meta);
+          options.onDone?.();
+        }
   } finally {
     reader.releaseLock();
   }
