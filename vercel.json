@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "builds": [
+    {
+      "src": "backend/api/index.py",
+      "use": "@vercel/python",
+      "config": { "maxLambdaSize": "25mb" }
+    }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "backend/api/index.py" },
+    { "src": "/docs", "dest": "backend/api/index.py" },
+    { "src": "/redoc", "dest": "backend/api/index.py" },
+    { "src": "/openapi.json", "dest": "backend/api/index.py" },
+    { "src": "/", "dest": "backend/api/index.py" }
+  ]
+}
