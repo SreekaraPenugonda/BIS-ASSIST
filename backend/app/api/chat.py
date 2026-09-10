@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
@@ -54,14 +55,21 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db), user: User | None 
         payload.message, payload.language, [t.model_dump() for t in payload.history]
     )
     structured = StructuredAnswer.model_validate(result["structured"])
-    conv = _persist(db, user, payload, structured, result["mode"])
+    try:
+        conv = _persist(db, user, payload, structured, result["mode"])
+        conversation_id = conv.id
+        created_at = conv.created_at or datetime.now(timezone.utc)
+    except Exception:
+        db.rollback()
+        conversation_id = payload.conversation_id or 0
+        created_at = datetime.now(timezone.utc)
     return ChatResponse(
-        conversation_id=conv.id,
+        conversation_id=conversation_id,
         user_message=payload.message,
         response_mode=result["mode"],
         language=payload.language,
         structured=structured,
-        created_at=conv.created_at,
+        created_at=created_at,
     )
 
 
