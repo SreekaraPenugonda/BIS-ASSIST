@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 
 export function SplashScreen() {
   const [visible, setVisible] = useState(true);
-  const [hasArtwork, setHasArtwork] = useState(true);
+  const [hasArtwork, setHasArtwork] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setVisible(false), 1100);
