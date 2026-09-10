@@ -13,11 +13,7 @@ import {
 import { motion } from "motion/react";
 import { Hero } from "@/components/Hero";
 import { QuickAccess } from "@/components/QuickAccess";
-import { ServiceCard } from "@/components/ServiceCard";
-import { CategoryGrid } from "@/components/CategoryGrid";
 import { FeatureCard } from "@/components/FeatureCard";
-import { RecentActivity } from "@/components/RecentActivity";
-import { ServiceDirectory } from "@/components/ServiceDirectory";
 
 const FEATURES = [
   {
@@ -113,71 +109,6 @@ export function HomePage() {
       </div>
 
       <section>
-        <h2 className="text-lg font-bold tracking-tight text-foreground">Choose your path</h2>
-        <p className="text-sm text-muted-foreground">
-          Built for everyone who cares about quality and safety — citizens and manufacturers.
-        </p>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <ServiceCard mode="consumer" />
-          <ServiceCard mode="msme" />
-        </div>
-      </section>
-
-      <section>
-        <h2 className="text-lg font-bold tracking-tight text-foreground">Browse by category</h2>
-        <p className="text-sm text-muted-foreground">Jump straight into a standards category.</p>
-        <div className="mt-4">
-          <CategoryGrid onSelect={(id) => navigate(`/standards?category=${id}`)} />
-        </div>
-      </section>
-
-      <section>
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-bold tracking-tight text-foreground">Schemes &amp; support</h2>
-            <p className="text-sm text-muted-foreground">
-              Explore certification routes and support options for products and businesses.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="hidden text-xs font-semibold text-primary hover:underline sm:block"
-            onClick={() => navigate("/msme")}
-          >
-            View MSME tools →
-          </button>
-        </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {SCHEMES.map((scheme, index) => {
-            const Icon = scheme.icon;
-            return (
-              <motion.button
-                key={scheme.title}
-                type="button"
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-30px" }}
-                transition={{ duration: 0.25, delay: index * 0.04 }}
-                className="group rounded-xl border border-border bg-card p-4 text-left card-shadow transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/[0.03]"
-                onClick={() => navigate(`/chat?q=${encodeURIComponent(`Tell me about ${scheme.title}`)}`)}
-              >
-                <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
-                  <Icon className="h-4.5 w-4.5" />
-                </span>
-                <span className="mt-3 block text-xs font-bold text-foreground">{scheme.title}</span>
-                <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">{scheme.description}</span>
-                <span className="mt-3 inline-flex rounded-full bg-muted px-2 py-1 text-[10px] font-semibold text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary">
-                  {scheme.tag}
-                </span>
-              </motion.button>
-            );
-          })}
-        </div>
-      </section>
-
-      <ServiceDirectory />
-
-      <section>
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -199,9 +130,6 @@ export function HomePage() {
         </div>
       </section>
 
-      <section>
-        <RecentActivity />
-      </section>
     </div>
   );
 }

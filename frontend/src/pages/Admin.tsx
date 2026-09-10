@@ -82,7 +82,7 @@ export function AdminPage() {
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-3">
           <Button asChild>
-            <Link to="/login">Go to sign in</Link>
+            <Link to="/admin/login">Admin sign in</Link>
           </Button>
           <p className="text-[11px] text-muted-foreground">
             Demo admin · <code className="kbd">admin@bis.ai</code> / <code className="kbd">admin123</code>

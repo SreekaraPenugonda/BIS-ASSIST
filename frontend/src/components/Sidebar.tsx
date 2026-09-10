@@ -7,7 +7,6 @@ import {
   Home,
   ScanLine,
   ShieldCheck,
-  UserRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -20,16 +19,12 @@ interface NavItem {
   end?: boolean;
 }
 
-const MAIN_NAV: NavItem[] = [
+const PUBLIC_NAV: NavItem[] = [
   { to: "/", label: "Home", icon: Home, end: true },
-  { to: "/consumer", label: "Consumer", icon: UserRound },
-  { to: "/msme", label: "MSME", icon: Factory },
-];
-
-const TOOLS_NAV: NavItem[] = [
   { to: "/chat", label: "Ask AI", icon: Bot },
   { to: "/scanner", label: "Scan Product", icon: ScanLine },
   { to: "/standards", label: "Standards", icon: BookOpenText },
+  { to: "/msme", label: "MSME Guidance", icon: Factory },
   { to: "/applications", label: "Applications", icon: FolderKanban },
 ];
 
@@ -67,8 +62,8 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
       </div>
 
       <nav className="flex-1 space-y-1 px-2 py-3">
-        <p className="px-2 pb-1 text-[10px] font-semibold uppercase text-muted-foreground">Main</p>
-        {MAIN_NAV.map((item) => {
+        <p className="px-2 pb-1 text-[10px] font-semibold uppercase text-muted-foreground">BIS AI Assistant</p>
+        {PUBLIC_NAV.map((item) => {
           const active = isActive(item);
           const Icon = item.icon;
           return (
@@ -79,27 +74,6 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
           );
         })}
 
-        <p className="mt-3 px-2 pb-1 text-[10px] font-semibold uppercase text-muted-foreground">Tools</p>
-        {TOOLS_NAV.map((item) => {
-          const active = isActive(item);
-          const Icon = item.icon;
-          return (
-            <Link key={item.to} to={item.to} className={itemClass(active)} onClick={() => setOpen(false)}>
-              <Icon className={iconClass(active)} />
-              {item.label}
-            </Link>
-          );
-        })}
-
-        {user?.role === "admin" && (
-          <>
-            <p className="mt-3 px-2 pb-1 text-[10px] font-semibold uppercase text-muted-foreground">Admin</p>
-            <Link to={NAV_TO_ADMIN.to} className={itemClass(isActive(NAV_TO_ADMIN))} onClick={() => setOpen(false)}>
-              <ShieldCheck className={iconClass(isActive(NAV_TO_ADMIN))} />
-              {NAV_TO_ADMIN.label}
-            </Link>
-          </>
-        )}
       </nav>
 
       <div className="border-t p-3">
@@ -116,8 +90,6 @@ export function Sidebar({ mobile = false }: { mobile?: boolean }) {
     </aside>
   );
 }
-
-const NAV_TO_ADMIN: NavItem = { to: "/admin", label: "Admin Console", icon: ShieldCheck, end: true };
 
 function systemStatus(): string {
   return localStorage.getItem("bis_mode") === "ai" ? "Gemini AI live" : "Simulation mode";

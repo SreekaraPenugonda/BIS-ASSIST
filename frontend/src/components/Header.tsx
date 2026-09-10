@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Bot, CheckCircle2, LogIn, Menu, Moon, Palette, Sun } from "lucide-react";
+import { Bot, CheckCircle2, Menu, Moon, Palette, Sun } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useUserMode } from "@/context/UserModeContext";
@@ -80,15 +80,7 @@ export function Header() {
             </span>
             <span className="max-w-[120px] truncate">{user.name.split(" ")[0]}</span>
           </Link>
-        ) : (
-          <Link
-            to="/login"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-          >
-            <LogIn className="h-3.5 w-3.5" />
-            Sign in
-          </Link>
-        )}
+        ) : null}
       </div>
       <div className="flex h-2 items-center px-4 sm:px-6">
         <div className="flex items-center gap-3 md:hidden">

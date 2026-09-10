@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { Link } from "react-router-dom";
-import { BookOpenText, Bot, FolderKanban, ScanLine } from "lucide-react";
+import { BookOpenText, Bot, Factory, FolderKanban, ScanLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ITEMS = [
@@ -8,11 +8,12 @@ const ITEMS = [
   { to: "/scanner", label: "Scan Product", hint: "Upload a label photo", icon: ScanLine, accent: "bg-saffron/15 text-saffron" },
   { to: "/standards", label: "Search Standards", hint: "Browse by category", icon: BookOpenText, accent: "bg-success/10 text-success" },
   { to: "/applications", label: "Track Application", hint: "MSME licence tracker", icon: FolderKanban, accent: "bg-primary/10 text-primary" },
+  { to: "/msme", label: "MSME Guidance", hint: "Certification and compliance", icon: Factory, accent: "bg-orange-500/10 text-orange-600" },
 ];
 
 export function QuickAccess() {
   return (
-    <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:grid-cols-5">
       {ITEMS.map((item, i) => {
         const Icon = item.icon;
         return (

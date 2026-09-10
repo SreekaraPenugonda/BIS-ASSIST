@@ -6,7 +6,7 @@ export function SplashScreen() {
   const [hasArtwork, setHasArtwork] = useState(true);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setVisible(false), 5000);
+    const timer = window.setTimeout(() => setVisible(false), 1100);
     return () => window.clearTimeout(timer);
   }, []);
 

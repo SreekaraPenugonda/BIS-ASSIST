@@ -19,7 +19,7 @@ const DEMO_ACCOUNTS: { label: string; email: string; password: string; role: Rol
   { label: "Admin", email: "admin@bis.ai", password: "admin123", role: "admin" },
 ];
 
-export function LoginPage() {
+export function LoginPage({ adminOnly = false }: { adminOnly?: boolean }) {
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
@@ -41,7 +41,7 @@ export function LoginPage() {
     try {
       if (mode === "login") {
         await signIn(email, password);
-      } else {
+      } else if (!adminOnly) {
         if (name.trim().length < 2) {
           setError("Please enter your full name.");
           setBusy(false);
@@ -50,13 +50,13 @@ export function LoginPage() {
         await signUp({ name: name.trim(), email, password, role });
       }
       toast.toast("success", mode === "login" ? "Welcome back!" : "Account created", "Redirecting…");
-      navigate("/");
+      navigate(adminOnly ? "/admin" : "/");
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
       setBusy(false);
     }
-  }, [mode, email, password, name, role, signIn, signUp, navigate, toast]);
+  }, [adminOnly, mode, email, password, name, role, signIn, signUp, navigate, toast]);
 
   return (
     <motion.div
@@ -70,8 +70,8 @@ export function LoginPage() {
           <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 text-primary">
             <ShieldCheck className="h-7 w-7" strokeWidth={2.2} />
           </span>
-          <CardTitle className="text-xl">BIS AI Standards Assistant</CardTitle>
-          <CardDescription>भारत सरकार · Government of India — demo sandbox sign-in</CardDescription>
+          <CardTitle className="text-xl">{adminOnly ? "BIS Admin Console" : "BIS AI Standards Assistant"}</CardTitle>
+          <CardDescription>{adminOnly ? "Protected administrator access" : "Public guidance does not require an account"}</CardDescription>
         </CardHeader>
 
         <Tabs
@@ -83,7 +83,7 @@ export function LoginPage() {
         >
           <TabsList className="w-full">
             <TabsTrigger value="login" className="flex-1">Sign in</TabsTrigger>
-            <TabsTrigger value="register" className="flex-1">Create account</TabsTrigger>
+            {!adminOnly && <TabsTrigger value="register" className="flex-1">Create account</TabsTrigger>}
           </TabsList>
 <TabsContent value="login" className="px-4">
             <CardContent className="grid gap-3">
@@ -119,7 +119,7 @@ export function LoginPage() {
             </CardContent>
           </TabsContent>
 
-          <TabsContent value="register" className="px-4">
+          {!adminOnly && <TabsContent value="register" className="px-4">
             <CardContent className="grid gap-3">
               <Label htmlFor="rg-name">Full name</Label>
               <Input id="rg-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Priya Sharma" className="mt-1" />
@@ -159,7 +159,7 @@ export function LoginPage() {
                 <KeyRound className="h-4 w-4" /> {busy ? "Creating…" : "Create account"}
               </Button>
             </CardContent>
-          </TabsContent>
+          </TabsContent>}
         </Tabs>
 
         <p className="mt-4 text-center text-[11px] text-muted-foreground">

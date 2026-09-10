@@ -296,7 +296,9 @@
     display: grid;
     place-items: center;
     background: linear-gradient(135deg, #f5f9ff 0%, #ffffff 52%, #fff7e8 100%);
-    animation: splash-out 420ms ease 4.58s forwards;
+    animation: splash-out 280ms ease 0.82s forwards;
+
+  .route-loading { display: grid; min-height: 40vh; place-items: center; color: hsl(var(--muted-foreground)); font-size: 0.875rem; }
   }
 
   .splash-screen-artwork {

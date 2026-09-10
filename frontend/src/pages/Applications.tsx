@@ -80,7 +80,7 @@ export function ApplicationsPage() {
     const idx = STATUS_STEPS.indexOf(app.status);
     const next = idx >= 0 && idx < STATUS_STEPS.length - 1 ? STATUS_STEPS[idx + 1] : "Rejected";
     if (!isAdmin) {
-      toast("info", "Admins advance statuses", "Sign in as admin@bis.ai to test this.");
+      toast("info", "Status updates", "Application status changes are managed by the BIS team.");
       return;
     }
     try {
@@ -100,7 +100,7 @@ export function ApplicationsPage() {
         <div>
           <h1 className="text-xl font-bold tracking-tight text-foreground">Applications</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Track a BIS licence application or sign in to manage yours.
+            Track a BIS licence application and review its latest status.
           </p>
         </div>
 
@@ -132,7 +132,7 @@ export function ApplicationsPage() {
 
         <Card className="card-shadow">
           <CardHeader>
-            <CardTitle>Sign in for full access</CardTitle>
+              <CardTitle>Application tracking</CardTitle>
             <CardDescription>
               MSME accounts can submit new applications; admins can advance statuses. Try{" "}
               <code className="kbd">msme@bis.ai</code> / <code className="kbd">msme123</code>.
@@ -140,10 +140,10 @@ export function ApplicationsPage() {
           </CardHeader>
           <CardContent>
             <Link
-              to="/login"
+              to="/msme"
               className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
             >
-              <LogIn className="h-4 w-4" /> Sign in
+              Open MSME guidance
             </Link>
           </CardContent>
         </Card>

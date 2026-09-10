@@ -1,18 +1,19 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { lazy, Suspense } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ToastProvider } from "@/components/ui/toast";
 import { AuthProvider } from "@/context/AuthContext";
 import { UserModeProvider } from "@/context/UserModeContext";
 import { AppLayout } from "@/components/AppLayout";
-import { HomePage } from "@/pages/Home";
-import { ConsumerPage } from "@/pages/Consumer";
-import { MSMEPage } from "@/pages/MSME";
-import { ChatPage } from "@/pages/Chat";
-import { ScannerPage } from "@/pages/Scanner";
-import { StandardsPage } from "@/pages/Standards";
-import { ApplicationsPage } from "@/pages/Applications";
-import { AdminPage } from "@/pages/Admin";
-import { LoginPage } from "@/pages/Login";
+const HomePage = lazy(() => import("@/pages/Home").then((m) => ({ default: m.HomePage })));
+const ConsumerPage = lazy(() => import("@/pages/Consumer").then((m) => ({ default: m.ConsumerPage })));
+const MSMEPage = lazy(() => import("@/pages/MSME").then((m) => ({ default: m.MSMEPage })));
+const ChatPage = lazy(() => import("@/pages/Chat").then((m) => ({ default: m.ChatPage })));
+const ScannerPage = lazy(() => import("@/pages/Scanner").then((m) => ({ default: m.ScannerPage })));
+const StandardsPage = lazy(() => import("@/pages/Standards").then((m) => ({ default: m.StandardsPage })));
+const ApplicationsPage = lazy(() => import("@/pages/Applications").then((m) => ({ default: m.ApplicationsPage })));
+const AdminPage = lazy(() => import("@/pages/Admin").then((m) => ({ default: m.AdminPage })));
+const LoginPage = lazy(() => import("@/pages/Login").then((m) => ({ default: m.LoginPage })));
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { SplashScreen } from "@/components/SplashScreen";
 
@@ -23,8 +24,10 @@ export function App() {
         <AuthProvider>
           <UserModeProvider>
             <BrowserRouter>
+              <Suspense fallback={<div className="route-loading" role="status">Loading BIS Assist…</div>}>
               <Routes>
-                <Route path="/login" element={<LoginPage />} />
+                <Route path="/admin/login" element={<LoginPage adminOnly />} />
+                <Route path="/login" element={<Navigate to="/" replace />} />
                 <Route element={<AppLayout />}>
                   <Route index element={<HomePage />} />
                   <Route path="consumer" element={<ConsumerPage />} />
@@ -37,6 +40,7 @@ export function App() {
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Route>
               </Routes>
+              </Suspense>
             </BrowserRouter>
             <PwaInstallPrompt />
           </UserModeProvider>
