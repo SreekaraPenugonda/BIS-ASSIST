@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_optional_user
@@ -49,19 +49,21 @@ def _persist(db: Session, user: User | None, payload: ChatRequest, structured: S
     return conv
 
 
-@router.post("", response_model=ChatResponse)
+@router.post("")
 def chat(payload: ChatRequest):
     result = chat_service.process(
         payload.message, payload.language, [t.model_dump() for t in payload.history]
     )
     structured = StructuredAnswer.model_validate(result["structured"])
-    return ChatResponse(
-        conversation_id=payload.conversation_id or 0,
-        user_message=payload.message,
-        response_mode=result["mode"],
-        language=payload.language,
-        structured=structured,
-        created_at=datetime.now(timezone.utc),
+    return JSONResponse(
+        content={
+            "conversation_id": payload.conversation_id or 0,
+            "user_message": payload.message,
+            "response_mode": result["mode"],
+            "language": payload.language,
+            "structured": structured.model_dump(mode="json"),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
     )
 
 
