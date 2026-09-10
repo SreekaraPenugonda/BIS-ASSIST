@@ -16,6 +16,21 @@ from app.services.gemini_service import gemini
 LANGUAGE_NAMES = {"en": "English", "hi": "Hindi", "te": "Telugu"}
 _AI_MAX_TOKENS = 900
 
+# Queries that are clearly outside the BIS domain (small-talk, homework,
+# weather, politics, ...). They get a polite redirect instead of a forced
+# retrieval answer so the assistant stays trustworthy.
+OFF_TOPIC_PATTERNS = [
+    "weather", "temperature outside", "cricket score", "movie", "film ",
+    "song", "joke", "politics", "election", "cricketer", "actor",
+    "homework", "maths", "mathematics", "essay on", "poem",
+    "what is your name", "who are you", "how are you",
+    "मौसम", "जोक", "कविता", "निबंध", "गाना", "फिल्म",
+    "వాతావరణం", "జోక్", "సినిమా", "పాట", "కవిత",
+]
+FEE_WORDS = {"fee", "fees", "cost", "price", "charge", "charges", "payment", "शुल्क", "कीमत", "రుసుము"}
+COMPLAINT_WORDS = {"complaint", "grievance", "report seller", "fake mark", "counterfeit", "शिकायत", "ఫిర్యాదు"}
+CONTACT_WORDS = {"contact", "helpline", "toll free", "phone number", "email", "address", "office"}
+
 SALUTATIONS = {
     "en": "नमस्ते! Namaste 🙏",
     "hi": "नमस्ते! 🙏",
@@ -29,23 +44,70 @@ TELUGU_NOTE = (
     "పూర్తి తెలుగు సమాధానం కోసం GEMINI_API_KEY సెట్ చేయండి. దిగువ సమాచారం సూచన కోసం:"
 )
 
-CHAT_SYSTEM_PROMPT = """You are the "BIS AI Standards Assistant", an official-style
-assistant that helps Indian consumers and MSME manufacturers understand Indian
-Standards (IS) and BIS certification.
+# ---------------------------------------------------------------- prompts
+CHAT_SYSTEM_PROMPT = """You are the "BIS AI Standards Assistant" — an expert on Indian
+Standards (IS) and BIS certification, helping Indian consumers and MSME manufacturers.
 
-Ground rules:
-1. Answer ONLY from the provided knowledge-base context.
-2. Never claim that any product is certified or compliant. State that the
-   information is indicative and that licence status must be verified on the
-   official BIS portal (bis.gov.in).
-3. If you are unsure or the context does not answer the question, say so clearly
-   and suggest the official BIS 'Know Your Standard' service.
-4. Use **bold** for Indian Standard numbers (e.g. **IS 302 (Part 2-1):2017**).
-5. Keep the answer under 200 words, well structured, with short bullet lists.
-6. You may greet in Hindi/Telugu/English depending on the user's language.
-Respond in the language the user asked in."""
+GROUND RULES (strict):
+1. Answer ONLY from the provided CONTEXT. If the context is insufficient, say so
+   clearly and point to bis.gov.in → 'Know Your Standard'. Never invent IS numbers,
+   dates, fees or clause numbers.
+2. NEVER claim any product is certified/compliant. Licence status must always be
+   verified on the official BIS portal (bis.gov.in).
+3. Bold every Indian Standard number, e.g. **IS 302 (Part 2-1):2017**.
+4. Cite context entries you use inline as [1], [2].
+
+ANSWER STRUCTURE (markdown, under 220 words):
+**Answer:** one or two sentences that directly answer the question.
+**Key points:** 3-5 short bullets with specifics pulled from the context
+(numbers, requirements, timelines, standard references) — cite [n].
+**What to do next:** 1-3 concrete action bullets (verify on bis.gov.in, run the
+label scanner, file an application).
+Only include a section if it adds information. Reply in the user's language."""
+
+
+def build_context_block(retrieved: list[dict], max_chars: int = 3500) -> str:
+    """Pack retrieved chunks into a numbered, source-labelled context block."""
+    if not retrieved:
+        return "CONTEXT: (no relevant entries found)"
+    parts: list[str] = []
+    used = 0
+    for i, e in enumerate(retrieved, 1):
+        head = f"[{i}] {e.get('document', 'Knowledge base')}"
+        if e.get("section"):
+            head += f" — {e['section']}"
+        if e.get("page"):
+            head += f" (p.{e['page']})"
+        content = (e.get("content") or "").strip()
+        content = content[: 900] + ("…" if len(content) > 900 else "")
+        block = f"{head}\n{content}"
+        if used + len(block) > max_chars and parts:
+            break
+        parts.append(block)
+        used += len(block)
+    return "CONTEXT (cite entries as [n] when used):\n\n" + "\n\n".join(parts)
+
+
 
 _INTENT_RULES: dict[str, list[str]] = {
+    "greeting": [
+        "hello", "hi ", "hey", "good morning", "good afternoon", "good evening",
+        "namaste", "namaskar", "thank", "thanks", "dhanyavad", "धन्यवाद",
+        "नमस्ते", "నమస్కారం",
+    ],
+    "fee": [
+        "fee", "fees", "cost", "price", "charge", "payment", "how much",
+        "शुल्क", "कीमत", "రుసుము",
+    ],
+    "complaint": [
+        "complaint", "grievance", "report ", "fake mark", "counterfeit",
+        "misuse of", "शिकायत", "ఫిర్యాదు",
+    ],
+    "contact": [
+        "contact", "helpline", "toll free", "toll-free", "phone number",
+        "email", "address", "office", "customer care",
+    ],
+    "off_topic": OFF_TOPIC_PATTERNS,
     "certification": [
         "certif", "licence", "license", "apply", "scheme", "standard mark",
         "isi mark", "how do i get", "how to get", "registration",
@@ -72,9 +134,14 @@ class ChatService:
         words = set(msg.split())
         if words & SALUTATION_WORDS or msg in {"hi", "helo", "hello", "hey"}:
             return "greeting"
+        # Check specific intents first (insertion ordered: greeting/fee/... before general).
         for intent, keys in _INTENT_RULES.items():
             if any(key in msg for key in keys):
                 return intent
+        # IS-number pattern like "IS 10500" or "IS:302" -> standard lookup.
+        import re as _re
+        if _re.search(r"\bis\s*\d{2,5}\b", msg):
+            return "standard_search"
         if recommendation_service.category_for_text(msg):
             return "product_compliance"
         return "general"
@@ -87,13 +154,13 @@ class ChatService:
         history: Optional[list[dict]] = None,
     ) -> dict:
         intent = self.detect_intent(message)
-        retrieved = self.rag.retrieve(message, k=5)
+        retrieved = self.rag.retrieve(message, k=8)
 
         answer_text = ""
         mode = "simulation"
         if gemini.available:
             text = gemini.generate(
-                CHAT_SYSTEM_PROMPT, self._user_prompt(message, language, retrieved)
+                CHAT_SYSTEM_PROMPT, self._user_prompt(message, language, retrieved, history)
             )
             if text:
                 answer_text = text
@@ -116,7 +183,7 @@ class ChatService:
         history: Optional[list[dict]] = None,
     ) -> AsyncIterator[dict]:
         intent = self.detect_intent(message)
-        retrieved = self.rag.retrieve(message, k=5)
+        retrieved = self.rag.retrieve(message, k=8)
 
         full_text = ""
         mode = "simulation"
@@ -124,7 +191,7 @@ class ChatService:
         if gemini.available:
             try:
                 for piece in gemini.generate_stream(
-                    CHAT_SYSTEM_PROMPT, self._user_prompt(message, language, retrieved)
+                    CHAT_SYSTEM_PROMPT, self._user_prompt(message, language, retrieved, history)
                 ):
                     if not piece:
                         continue
@@ -150,20 +217,118 @@ class ChatService:
 
     # ------------------------------------------------------------ helpers
     @staticmethod
-    def _user_prompt(message: str, language: str, retrieved: list[dict]) -> str:
-        context = "\n".join(
-            f"[{i + 1}] {e['document']} | {e.get('section') or 'Section'}: {e['content'][:900]}"
-            for i, e in enumerate(retrieved[:4])
-        )
+    def _history_block(history: Optional[list[dict]], max_turns: int = 4) -> str:
+        """Condense recent conversation turns into a compact recap block."""
+        if not history:
+            return ""
+        turns: list[str] = []
+        for turn in history[-max_turns:]:
+            role = turn.get("role", "user")
+            content = (turn.get("content") or "").strip().replace("\n", " ")
+            if not content:
+                continue
+            tag = "User" if role == "user" else "Assistant"
+            turns.append(f"{tag}: {content[:180]}")
+        if not turns:
+            return ""
+        return "RECENT CONVERSATION (for pronoun/context resolution only):\n" + "\n".join(turns)
+
+    @staticmethod
+    def _user_prompt(
+        message: str,
+        language: str,
+        retrieved: list[dict],
+        history: Optional[list[dict]] = None,
+    ) -> str:
         lang_name = LANGUAGE_NAMES.get(language, "English")
-        return (
-            f"Language: {lang_name}. Respond in {lang_name}.\n\n"
-            f"Knowledge-base context:\n{context or '(no context retrieved)'}\n\n"
-            f"Question: {message}"
-        )
+        context = build_context_block(retrieved)
+        history_block = ChatService._history_block(history)
+        parts = [
+            f"Language: respond ONLY in {lang_name}.",
+        ]
+        if history_block:
+            parts.append(history_block)
+        parts.append(context)
+        parts.append(f"Question: {message}")
+        return "\n\n".join(parts)
 
     def _mock_text(self, message: str, language: str, intent: str, retrieved: list[dict]) -> str:
         lang = language if language in LANGUAGE_NAMES else "en"
+        if intent == "off_topic":
+            if lang == "hi":
+                return (
+                    "मैं BIS मानकों, प्रमाणन (ISI/CRS/हॉलमार्किंग/FMCS/QCO) और उत्पाद अनुपालन पर ही "
+                    "सहायता करता हूँ, इसलिए इस विषय पर उत्तर नहीं दे सकता।\n\n"
+                    "आप पूछ सकते हैं: *मेरे इलेक्ट्रिक केतली पर कौन-सा IS लागू होता है?* या "
+                    "*BIS प्रमाणन कैसे प्राप्त करें?*"
+                )
+            if lang == "te":
+                return (
+                    "నేను BIS ప్రమాణాలు, ధృవీకరణ (ISI/CRS/హాల్‌మార్కింగ్/FMCS/QCO) మరియు ఉత్పత్తి "
+                    "అనుకూలతపై మాత్రమే సహాయం చేస్తాను, కాబట్టి ఈ అంశంపై సమాధానం ఇవ్వలేను.\n\n"
+                    "మీరు అడగవచ్చు: *నా ఎలక్ట్రిక్ కెటిల్‌కు ఏ IS వర్తిస్తుంది?* లేదా "
+                    "*BIS ధృవీకరణ ఎలా పొందాలి?*"
+                )
+            return (
+                "I can only help with BIS standards, certification (ISI mark, CRS, hallmarking, "
+                "FMCS, QCOs), product compliance, testing and labelling — so I can't answer "
+                "that topic.\n\nTry asking:\n"
+                "- *Which IS applies to my electric kettle?*\n"
+                "- *How do I get a BIS licence?*\n"
+                "- *Is CRS registration needed for my LED bulb?*"
+            )
+        if intent in ("fee", "complaint", "contact"):
+            picked = [e for e in retrieved if "misc_queries_faq" in e.get("document", "")]
+            snippet = (" " + picked[0]["content"][:550]) if picked else ""
+            if intent == "fee" and lang == "hi":
+                return (
+                    "BIS शुल्क योजना पर निर्भर करता है (आवेदन, परीक्षण/निरीक्षण, वार्षिक लाइसेंस और "
+                    f"मार्किंग शुल्क)।{snippet}\n\nवर्तमान शुल्क bis.gov.in / Manakonline पर सत्यापित करें।"
+                    + self._trailing(lang)
+                )
+            if intent == "fee" and lang == "te":
+                return (
+                    "BIS రుసుము పథకాన్ని బట్టి ఉంటుంది (దరఖాస్తు, పరీక్ష/తనిఖీ, వార్షిక లైసెన్స్ మరియు "
+                    f"మార్కింగ్ రుసుము).{snippet}\n\nప్రస్తుత రుసుములను bis.gov.in / Manakonlineలో ధృవీకరించండి."
+                    + self._trailing(lang)
+                )
+            if intent == "fee":
+                return (
+                    "BIS fees depend on the scheme (application + testing/inspection + annual "
+                    f"licence + marking fee; CRS charges per model).{snippet}\n\n"
+                    "Confirm the current fee schedule on bis.gov.in / Manakonline before paying anyone."
+                    + self._trailing(lang)
+                )
+            if intent == "complaint":
+                base = (
+                    "Verify the mark on bis.gov.in → 'Verify Licence' (or the BIS Care app), keep the "
+                    f"invoice and photos of the mark,{snippet} or call toll-free 1800-11-3999."
+                )
+                if lang == "hi":
+                    base = ("bis.gov.in → 'Verify Licence' (या BIS Care ऐप) पर निशान सत्यापित करें, बिल और "
+                            f"निशान की फोटो रखें।{snippet} या टोल-फ्री 1800-11-3999 पर कॉल करें।")
+                if lang == "te":
+                    base = ("bis.gov.in → 'Verify Licence' (లేదా BIS Care యాప్)లో గుర్తును ధృవీకరించండి, "
+                            f"ఇన్‌వాయిస్ మరియు గుర్తు ఫోటోలు ఉంచండి.{snippet} లేదా టోల్-ఫ్రీ 1800-11-3999కు కాల్ చేయండి.")
+                return base + self._trailing(lang)
+            # contact
+            if lang == "hi":
+                return (
+                    "BIS से संपर्क: bis.gov.in → 'Contact Us', BIS Care ऐप, या टोल-फ्री 1800-11-3999। "
+                    "शिकायत के लिए BIS शिकायत पोर्टल का उपयोग करें।"
+                    + self._trailing(lang)
+                )
+            if lang == "te":
+                return (
+                    "BISను సంప్రదించండి: bis.gov.in → 'Contact Us', BIS Care యాప్, లేదా టోల్-ఫ్రీ "
+                    "1800-11-3999. ఫిర్యాదు కోసం BIS ఫిర్యాదు పోర్టల్ ఉపయోగించండి."
+                    + self._trailing(lang)
+                )
+            return (
+                "Contact BIS via bis.gov.in → 'Contact Us', the BIS Care app, or toll-free "
+                "1800-11-3999. For misuse of the ISI mark use the BIS complaint portal."
+                + self._trailing(lang)
+            )
         if intent == "greeting":
             if lang == "hi":
                 return (
@@ -273,14 +438,19 @@ class ChatService:
 
         bullets = []
         seen: set[str] = set()
-        for e in retrieved[:4]:
+        for e in retrieved[:6]:
             num = e.get("is_number")
             if num and num not in seen:
                 seen.add(num)
                 bullets.append(f"- **{num}** — {e.get('title') or 'Applicable standard'}")
         listing = "\n".join(bullets) if bullets else "- *(standard not yet identified)*"
 
-        top = retrieved[0]["content"].split(". ")[0]
+        tops = []
+        for e in retrieved[:3]:
+            first = (e.get("content") or "").split(". ")[0].strip()
+            if first and first not in tops:
+                tops.append(first)
+        joined = " ".join(f"{t}." if not t.endswith(".") else t for t in tops)
         if lang == "hi":
             return (
                 f"BIS ज्ञान आधार के अनुसार:\n\n**संभावित लागू मानक:**\n{listing}\n\n"
@@ -295,7 +465,7 @@ class ChatService:
                 "ఇది సూచనాత్మక సమాచారం మాత్రమే. అధికారిక BIS పోర్టల్‌లో తప్పనిసరిగా ధృవీకరించండి."
                 + self._trailing(lang)
             )
-        summary = f"The closest match in the knowledge base is: {top}." if top else ""
+        summary = f"The closest matches in the knowledge base: {joined}" if joined else ""
 
         return (
             f"Based on the BIS knowledge base, here is what we found:\n\n"
