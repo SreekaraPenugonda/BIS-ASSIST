@@ -50,26 +50,18 @@ def _persist(db: Session, user: User | None, payload: ChatRequest, structured: S
 
 
 @router.post("", response_model=ChatResponse)
-def chat(payload: ChatRequest, db: Session = Depends(get_db), user: User | None = Depends(get_optional_user)):
+def chat(payload: ChatRequest):
     result = chat_service.process(
         payload.message, payload.language, [t.model_dump() for t in payload.history]
     )
     structured = StructuredAnswer.model_validate(result["structured"])
-    try:
-        conv = _persist(db, user, payload, structured, result["mode"])
-        conversation_id = conv.id
-        created_at = conv.created_at or datetime.now(timezone.utc)
-    except Exception:
-        db.rollback()
-        conversation_id = payload.conversation_id or 0
-        created_at = datetime.now(timezone.utc)
     return ChatResponse(
-        conversation_id=conversation_id,
+        conversation_id=payload.conversation_id or 0,
         user_message=payload.message,
         response_mode=result["mode"],
         language=payload.language,
         structured=structured,
-        created_at=created_at,
+        created_at=datetime.now(timezone.utc),
     )
 
 
