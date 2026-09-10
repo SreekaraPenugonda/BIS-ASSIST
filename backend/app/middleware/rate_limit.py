@@ -24,6 +24,11 @@ class RateLimitMiddleware:
         if scope["type"] != "http" or self._is_exempt(scope.get("path", "")):
             return await self.app(scope, receive, send)
 
+        # Never rate-limit CORS preflights — blocking OPTIONS is what surfaces
+        # in the browser as "No 'Access-Control-Allow-Origin' header".
+        if scope.get("method", "").upper() == "OPTIONS":
+            return await self.app(scope, receive, send)
+
         client = scope.get("client")
         ip = client[0] if client else "local"
         now = time.monotonic()

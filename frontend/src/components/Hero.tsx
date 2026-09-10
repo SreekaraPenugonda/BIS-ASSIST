@@ -5,8 +5,8 @@ import { SearchBar } from "@/components/SearchBar";
 import { cn } from "@/lib/utils";
 
 const STATS = [
-  { value: "29+", label: "Standards seeded" },
-  { value: "3", label: "Source docs indexed" },
+  { value: "78+", label: "Standards seeded" },
+  { value: "15", label: "Source docs indexed" },
   { value: "3", label: "Languages" },
   { value: "100%", label: "Risk-safe replies" },
 ];

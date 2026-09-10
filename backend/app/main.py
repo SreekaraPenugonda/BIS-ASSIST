@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app import __version__
 from app.api import admin, applications, auth, chat, health, scanner, standards
@@ -24,6 +24,13 @@ logger = get_logger("app")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging(settings.environment.upper() == "DEVELOPMENT" and "DEBUG" or "INFO")
+    _warm_rag_index()
+    yield
+    logger.info("Shutting down.")
+
+
+def _warm_rag_index() -> None:
+    """Seed DB + build the in-memory RAG index (safe to call more than once)."""
     init_db()
 
     db = SessionLocal()
@@ -39,8 +46,14 @@ async def lifespan(app: FastAPI):
     embedded = rag_service.rag_index.embed()
     mode = "gemini" if rag_service.rag_index.uses_gemini else "local-hash"
     logger.info("RAG index ready: %s KB entries, %s doc sections (%s), mode=%s", kb, docs, embedded, mode)
-    yield
-    logger.info("Shutting down.")
+
+
+# Vercel serverless functions do not always run lifespan handlers, so warm the
+# index eagerly at import time too. _warm_rag_index is idempotent.
+try:
+    _warm_rag_index()
+except Exception as exc:  # pragma: no cover - never break import on serverless
+    logger.warning("RAG warm-up deferred: %s", exc)
 
 
 app = FastAPI(
@@ -54,16 +67,56 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origin_list,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-app.add_middleware(RateLimitMiddleware)
-app.add_middleware(RequestLoggingMiddleware)
+# ---------------------------------------------------------------------------
+# First-party CORS handler (replaces CORSMiddleware).
+# CORSMiddleware answers OPTIONS internally *without* calling downstream
+# middleware, and Vercel's Python runtime can strip/mangle those headers on
+# error paths. Handling OPTIONS + injecting headers explicitly at the very
+# outside guarantees the browser always sees Access-Control-Allow-Origin.
+# ---------------------------------------------------------------------------
+CORS_ALLOW_ORIGIN = "*"
+CORS_ALLOW_METHODS = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+CORS_ALLOW_HEADERS = "Authorization, Content-Type, X-Requested-With, Accept, Origin"
+CORS_MAX_AGE = "86400"
+
+
+class _CorsMiddleware:
+    def __init__(self, app) -> None:
+        self.app = app
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope.get("type") != "http":
+            return await self.app(scope, receive, send)
+
+        if scope.get("method", "").upper() == "OPTIONS":
+            response = JSONResponse(status_code=200, content={"ok": True})
+            raw = [(k.lower().encode(), v.encode()) for k, v in response.headers.items()]
+            raw.append((b"access-control-allow-origin", CORS_ALLOW_ORIGIN.encode()))
+            raw.append((b"access-control-allow-methods", CORS_ALLOW_METHODS.encode()))
+            raw.append((b"access-control-allow-headers", CORS_ALLOW_HEADERS.encode()))
+            raw.append((b"access-control-max-age", CORS_MAX_AGE.encode()))
+            await send({"type": "http.response.start", "status": 200, "headers": raw})
+            await send({"type": "http.response.body", "body": b'{"ok": true}'})
+            return
+
+        async def send_wrapper(message):
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers") or [])
+                lower = {k.lower() for k, _ in headers}
+                if b"access-control-allow-origin" not in lower:
+                    headers.append((b"access-control-allow-origin", b"*"))
+                message["headers"] = headers
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper)
+
+
+# NOTE: Starlette runs the LAST-added middleware FIRST (outermost). CORS must
+# be the outermost layer so preflights never hit rate-limit / auth logic.
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(_CorsMiddleware)
 
 _PREFIX = settings.api_prefix
 app.include_router(health.router, prefix=_PREFIX)

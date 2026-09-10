@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     jwt_secret: str = "dev-secret-change-me-in-production"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 480
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,https://localhost:5173,https://127.0.0.1:5173,https://frontend-seven-sepia-41.vercel.app"
+    cors_origins: str = "*"
 
     # Database
     database_url: str = f"sqlite:///{(RUNTIME_DIR / 'bis_assistant.db').as_posix()}"
@@ -51,9 +51,30 @@ class Settings(BaseSettings):
     documents_dir: Path = BASE_DIR / "data" / "bis_documents"
     uploads_dir: Path = RUNTIME_DIR / "uploads"
 
+    # Extra production frontends (comma-separated) merged with cors_origins.
+    # Set FRONTEND_URL=https://<your-frontend>.vercel.app in Vercel backend env.
+    frontend_url: str = ""
+    extra_cors_origins: str = ""
+
     @property
     def cors_origin_list(self) -> list[str]:
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        seen: list[str] = []
+        for raw in (self.cors_origins, self.extra_cors_origins, self.frontend_url):
+            for origin in (raw or "").replace(";", ",").split(","):
+                origin = origin.strip().rstrip("/")
+                if origin and origin not in seen:
+                    seen.append(origin)
+        # A wildcard lets any deployed Vercel preview URL (+ localhost) call
+        # the API without touching backend env vars on every redeploy.
+        if "*" in seen:
+            return ["*"]
+        return seen
+
+    @property
+    def cors_allow_credentials(self) -> bool:
+        # Browsers reject `Access-Control-Allow-Credentials: true` together with
+        # `Access-Control-Allow-Origin: *`, so credentials must be off in wildcard mode.
+        return "*" not in self.cors_origin_list
 
     @property
     def is_sqlite(self) -> bool:
