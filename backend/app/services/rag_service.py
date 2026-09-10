@@ -126,6 +126,11 @@ class RagIndex:
         q = np.asarray(
             embedding_service.embedder.embed_one(normalized_query), dtype=np.float32
         )
+        # A previously built index may use local 256-dim vectors while Gemini
+        # now returns 3072-dim query embeddings. Keep retrieval available by
+        # matching the query vector to the stored index dimension.
+        if q.ndim != 1 or q.shape[0] != self.vectors.shape[1]:
+            q = np.asarray(embedding_service.hash_embed(normalized_query), dtype=np.float32)
         q_norm = float(np.linalg.norm(q))
         if q_norm == 0:
             return []
