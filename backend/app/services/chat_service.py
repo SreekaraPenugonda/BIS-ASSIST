@@ -159,12 +159,15 @@ class ChatService:
         answer_text = ""
         mode = "simulation"
         if gemini.available:
-            text = gemini.generate(
-                CHAT_SYSTEM_PROMPT, self._user_prompt(message, language, retrieved, history)
-            )
-            if text:
-                answer_text = text
-                mode = "ai"
+            try:
+                text = gemini.generate(
+                    CHAT_SYSTEM_PROMPT, self._user_prompt(message, language, retrieved, history)
+                )
+                if text:
+                    answer_text = text
+                    mode = "ai"
+            except Exception:
+                pass
 
         if not answer_text:
             answer_text = self._mock_text(message, language, intent, retrieved)
