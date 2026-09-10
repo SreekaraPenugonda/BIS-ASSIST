@@ -53,6 +53,7 @@ export async function streamChat(
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let receivedEvent = false;
 
   try {
     while (true) {
@@ -71,6 +72,7 @@ export async function streamChat(
             continue;
           }
           const event: StreamEvent = JSON.parse(json);
+          receivedEvent = true;
           if (event.type === "token" && event.content) {
             options.onToken(event.content);
           } else if (event.type === "meta" && event.meta) {
@@ -87,7 +89,14 @@ export async function streamChat(
     }
         if (buffer.trim().startsWith("data: ")) {
           const event: StreamEvent = JSON.parse(buffer.trim().slice(6).trim());
+          receivedEvent = true;
           if (event.type === "meta" && event.meta) options.onMeta?.(event.meta);
+          options.onDone?.();
+        }
+        if (!receivedEvent) {
+          const fallback = await sendChat(payload);
+          options.onToken(fallback.structured.answer);
+          options.onMeta?.(fallback.structured);
           options.onDone?.();
         }
   } finally {
